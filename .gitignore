@@ -1,0 +1,10 @@
+
+*.beam
+
+c_src/libart/
+
+ebin/elibart.app
+
+priv/elibart.so
+
+c_src/elibart.o
