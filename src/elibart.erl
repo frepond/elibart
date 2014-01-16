@@ -20,8 +20,7 @@ nif_stub_error(Line) ->
 %% Erlang compiler's use of optimized selective receive.
 -define(WAIT_FOR_REPLY(Ref),
         receive {Ref, Reply} ->
-                Reply;
-                ok -> ok
+                Reply
         after
             100 -> error
         end).
@@ -59,11 +58,11 @@ prefix_search(Ref, Key, Fun) ->
 
 process_results(CallerRef, Fun) ->
   Res = ?WAIT_FOR_REPLY(CallerRef),
-  case Res of 
+  case Res of
     {Key, Value} -> 
       Fun(Key, Value),
       process_results(CallerRef, Fun);
-      ok -> ok
+    ok -> ok
   end.
 
 
@@ -80,6 +79,20 @@ basic_test() ->
   ?assertEqual(empty, search(Ref, <<"trash">>)),
   insert(Ref, <<"empty">>,<<>>),
   ?assertEqual({ok, <<"012345678901234567">>}, search(Ref, <<"test:element">>)).
+
+prefix_test() ->
+  {ok, Ref} = new(),
+  insert(Ref, <<"api.leapsight.test">>, <<"api.leapsight.test">>),
+  insert(Ref, <<"api.leapsight">>, <<"api.leapsight">>),
+  insert(Ref, <<"api">>, <<"api">>),
+  insert(Ref, <<"apa.leapsight.test">>, <<"apa.leapsight.test">>),
+  prefix_search(Ref, <<"api">>, fun prefix_fun/2).
+
+prefix_fun(Key, Value) ->
+  List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
+            {<<"api.leapsight.test">>, <<"api.leapsight.test">>}],
+  ?assertEqual(Key, Value),
+  ?assert(lists:keymember(Key, 1, List)).
 
 volume_test() ->
   {ok, Ref} = new(),
@@ -101,19 +114,5 @@ insert_n(Ref, N) ->
       {ok, empty} = insert(Ref, Key, Key),
       insert_n(Ref, N - 1)
   end.
-
-prefix_test() ->
-  {ok, Ref} = new(),
-  insert(Ref, <<"api.leapsight.test">>, <<"api.leapsight.test">>),
-  insert(Ref, <<"api.leapsight">>, <<"api.leapsight">>),
-  insert(Ref, <<"api">>, <<"api">>),
-  insert(Ref, <<"apa.leapsight.test">>, <<"apa.leapsight.test">>),
-  prefix_search(Ref, <<"api">>, fun prefix_fun/2).
-
-prefix_fun(Key, Value) ->
-  List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
-            {<<"api.leapsight.test">>, <<"api.leapsight.test">>}],
-  ?assertEqual(Key, Value),
-  ?assert(lists:keymember(Key, 1, List)).
 
 -endif.

@@ -39,8 +39,8 @@ typedef struct
 
 typedef struct $
 {
-    ErlNifEnv *env;
-    ERL_NIF_TERM caller_pid;
+    ErlNifEnv *env, *msg_env;
+    ErlNifPid pid;
     ERL_NIF_TERM caller_ref;   
 } callback_data;
 
@@ -165,38 +165,22 @@ static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
     if (!enif_inspect_binary(env, argv[1], &key))
         return enif_make_badarg(env);
 
-/* DEBUG */
-puts("art_search: ");
-printBinary(&key);
-puts("");
-/* DEBUG */
-
     art_elem_struct *value = art_search(t, (char*) key.data, key.size);
 
     if (!value)
         return enif_make_atom(env, "empty");
 
     ErlNifBinary res;
-
     enif_alloc_binary(value->size * sizeof(unsigned char), &res);
     memcpy(res.data, value->data, value->size * sizeof(unsigned char));
-
-/* DEBUG */
-puts("art_search_result: ");
-printBinary(&res);
-puts("");
-/* DEBUG */
 
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_binary(env, &res));
 }
 
 static int prefix_cb(void *data, const char *k, uint32_t k_len, void *val) {
     callback_data *cb_data = data;
-    ErlNifEnv* msg_env;
     art_elem_struct *elem = val;
     ErlNifBinary key, value;
-    ERL_NIF_TERM caller_ref;
-    ErlNifPid pid;
 
     enif_alloc_binary(k_len * sizeof(unsigned char), &key);
     memcpy(key.data, k, k_len);
@@ -204,37 +188,13 @@ static int prefix_cb(void *data, const char *k, uint32_t k_len, void *val) {
     enif_alloc_binary(elem->size * sizeof(unsigned char), &value);
     memcpy(value.data, elem->data, elem->size * sizeof(unsigned char));
 
-    if(!enif_is_pid(cb_data->env, cb_data->caller_pid))
-        return -1;
-
-    if(!enif_get_local_pid(cb_data->env, cb_data->caller_pid, &pid))
-        return -1;
-
-    msg_env = enif_alloc_env();
-    if(msg_env == NULL)
-        return -1;
-
-    caller_ref = enif_make_copy(msg_env, cb_data->caller_ref);
-
-    ERL_NIF_TERM res = enif_make_tuple2(msg_env, caller_ref,
-        enif_make_tuple2(msg_env, enif_make_binary(msg_env, &key), enif_make_binary(msg_env, &value)));
+    ERL_NIF_TERM res = enif_make_tuple2(cb_data->msg_env, 
+        cb_data->caller_ref,
+        enif_make_tuple2(cb_data->msg_env, 
+            enif_make_binary(cb_data->msg_env, &key), enif_make_binary(cb_data->msg_env, &value)));
     
-/* DEBUG */
-    puts("art_prefix_result: ");  
-    printBinary(&key);
-    fputs(" - ", stdout);
-    printBinary(&value);
-    puts("");
-/* DEBUG */
-
-    if(!enif_send(cb_data->env, &pid, msg_env, res)) 
-    {
-        enif_free(msg_env);
-
-        return -1;
-    }
-
-    enif_free(msg_env);    
+    if(!enif_send(cb_data->env, &cb_data->pid, cb_data->msg_env, res)) 
+        return -1;    
 
     return 0;
 }
@@ -254,18 +214,29 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
         return enif_make_badarg(env);
 
     cb_data.env = env;
-    cb_data.caller_ref = argv[2];
-    cb_data.caller_pid = argv[3];
+    if(!enif_is_pid(env, argv[3]))
+        return -1;
 
-/* DEBUG */
-puts("art_prefix_search: ");
-printBinary(&key);
-puts("");
-/* DEBUG */    
+    if(!enif_get_local_pid(env, argv[3], &cb_data.pid))
+        return -1;
 
-    // TODO this should be a worker thread since it's a long opearation
-    if (art_iter_prefix(t, (char *) key.data, key.size, prefix_cb, &cb_data))
+    cb_data.msg_env = enif_alloc_env();
+    if(cb_data.msg_env == NULL)
+        return -1;
+
+    cb_data.caller_ref = enif_make_copy(cb_data.msg_env, argv[2]);
+    ERL_NIF_TERM res = enif_make_tuple2(cb_data.msg_env, cb_data.caller_ref, mk_atom(cb_data.msg_env, "ok"));    
+
+    // TODO this should be a worker thread since it's a long opearation (?)
+    if (art_iter_prefix(t, (char *) key.data, key.size, prefix_cb, &cb_data) || 
+        !enif_send(cb_data.env, &cb_data.pid, cb_data.msg_env, res))
+    {
+        enif_free(cb_data.msg_env);
+
         return enif_make_atom(env, "error");
+    }
+
+    enif_free(cb_data.msg_env);
 
     return enif_make_atom(env, "ok");
 }
