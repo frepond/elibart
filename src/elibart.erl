@@ -77,7 +77,7 @@ basic_test() ->
   ?assertEqual({ok, <<"some_value">>}, insert(Ref, <<"test:element">>, <<"some_new_value">>)),
   ?assertEqual({ok, <<"some_new_value">>}, insert(Ref, <<"test:element">>, <<"012345678901234567">>)),
   ?assertEqual(empty, search(Ref, <<"trash">>)),
-  insert(Ref, <<"empty">>,<<>>),
+  insert(Ref, <<"new">>,<<>>),
   ?assertEqual({ok, <<"012345678901234567">>}, search(Ref, <<"test:element">>)).
 
 prefix_test() ->

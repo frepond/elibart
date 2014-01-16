@@ -81,7 +81,6 @@ mk_error(ErlNifEnv* env, const char* mesg)
     return enif_make_tuple(env, mk_atom(env, "error"), mk_atom(env, mesg));
 }
 
-
 /* implemented nifs */
 
 static ErlNifFunc nif_funcs[] =
@@ -98,19 +97,17 @@ static ERL_NIF_TERM elibart_new(ErlNifEnv* env, int argc,
 {
     art_tree* t = enif_alloc_resource(elibart_RESOURCE,
                                                     sizeof(art_tree));
-    int res = init_art_tree(t);
     
-    if (res != 0)
-        return enif_make_tuple2(env, enif_make_atom(env, "fail"), res);
+    if (init_art_tree(t) != 0)
+        return mk_error(env, "init_art_tree");
     else 
     {
-        ERL_NIF_TERM result = enif_make_resource(env, t);
+        ERL_NIF_TERM res = enif_make_resource(env, t);
         enif_release_resource(t);
     
-        return enif_make_tuple2(env, enif_make_atom(env, "ok"), result);
+        return enif_make_tuple2(env, mk_atom(env, "ok"), res);
     }
 }
-
 
 static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
                                           const ERL_NIF_TERM argv[])
@@ -121,6 +118,8 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
     art_elem_struct *elem;
 
     // extract arguments atr_tree, key, value
+    if (argc != 3)
+        return enif_make_badarg(env);
     if(!enif_get_resource(env, argv[0], elibart_RESOURCE, (void**) &t))
         return enif_make_badarg(env);
     if (!enif_inspect_binary(env, argv[1], &key))
@@ -128,21 +127,25 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
     if (!enif_inspect_binary(env, argv[2], &value))
         return enif_make_badarg(env);
 
+    // create a copy of the key
     key_copy = malloc(key.size * sizeof(unsigned char));
     elem = malloc(sizeof(art_elem_struct));
     elem->data = malloc(value.size * sizeof(unsigned char));
 
+    //create art elemente
     elem->size = value.size;
     memcpy(key_copy, key.data, key.size * sizeof(unsigned char));
     memcpy(elem->data, value.data, value.size * sizeof(unsigned char));
 
+    // insert the element in the art_tree
     art_elem_struct *old_elem = art_insert(t, (char*) key_copy, key.size, elem);
     
+    // the inserted key is new
     if (!old_elem)
-        return enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_atom(env, "empty"));
+        return enif_make_tuple2(env, mk_atom(env, "ok"), mk_atom(env, "empty"));
 
+    // the inserted key already existed, return previous value
     ErlNifBinary res;
-
     enif_alloc_binary(old_elem->size * sizeof(unsigned char), &res);
     memcpy(res.data, old_elem->data, old_elem->size * sizeof(unsigned char));
 
@@ -160,21 +163,26 @@ static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
     ErlNifBinary key;
     
     // extract arguments atr_tree, key
+    if(argc != 2)
+      return enif_make_badarg(env);
     if(!enif_get_resource(env, argv[0], elibart_RESOURCE, (void**) &t))
         return enif_make_badarg(env);
     if (!enif_inspect_binary(env, argv[1], &key))
         return enif_make_badarg(env);
 
+    // search the art_tree for the given key
     art_elem_struct *value = art_search(t, (char*) key.data, key.size);
 
+    // key does not exist in the art_tree
     if (!value)
-        return enif_make_atom(env, "empty");
+        return mk_atom(env, "empty");
 
+    // key exixts, return the associated value
     ErlNifBinary res;
     enif_alloc_binary(value->size * sizeof(unsigned char), &res);
     memcpy(res.data, value->data, value->size * sizeof(unsigned char));
 
-    return enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_binary(env, &res));
+    return enif_make_tuple2(env, mk_atom(env, "ok"), enif_make_binary(env, &res));
 }
 
 static int prefix_cb(void *data, const char *k, uint32_t k_len, void *val) {
@@ -208,6 +216,8 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     callback_data cb_data;
     
     // extract arguments atr_tree, key
+    if (argc != 4)
+        return enif_make_badarg(env);
     if(!enif_get_resource(env, argv[0], elibart_RESOURCE, (void**) &t))
         return enif_make_badarg(env);
     if (!enif_inspect_binary(env, argv[1], &key))
@@ -215,14 +225,14 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
 
     cb_data.env = env;
     if(!enif_is_pid(env, argv[3]))
-        return -1;
+        return mk_error(env, "not_a_pid");
 
     if(!enif_get_local_pid(env, argv[3], &cb_data.pid))
-        return -1;
+        return mk_error(env, "not_a_local_pid");;
 
     cb_data.msg_env = enif_alloc_env();
     if(cb_data.msg_env == NULL)
-        return -1;
+        return mk_error(env, "env_alloc_error");;
 
     cb_data.caller_ref = enif_make_copy(cb_data.msg_env, argv[2]);
     ERL_NIF_TERM res = enif_make_tuple2(cb_data.msg_env, cb_data.caller_ref, mk_atom(cb_data.msg_env, "ok"));    
@@ -233,12 +243,12 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     {
         enif_free(cb_data.msg_env);
 
-        return enif_make_atom(env, "error");
+        return mk_atom(env, "art_prefix_search");
     }
 
     enif_free(cb_data.msg_env);
 
-    return enif_make_atom(env, "ok");
+    return mk_atom(env, "ok");
 }
 
 static ERL_NIF_TERM elibart_size(ErlNifEnv* env, int argc,
@@ -247,6 +257,8 @@ static ERL_NIF_TERM elibart_size(ErlNifEnv* env, int argc,
     art_tree* t;
 
     // extract arguments atr_tree
+    if (argc != 1)
+        return enif_make_badarg(env);
     if(!enif_get_resource(env, argv[0], elibart_RESOURCE, (void**) &t))
         return enif_make_badarg(env);
 
