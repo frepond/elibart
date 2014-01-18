@@ -39,7 +39,7 @@ typedef struct
 
 typedef struct $
 {
-    ErlNifEnv *env, *msg_env;
+    ErlNifEnv *env;
     ErlNifPid pid;
     ERL_NIF_TERM caller_ref;   
 } callback_data;
@@ -196,13 +196,26 @@ static int prefix_cb(void *data, const char *k, uint32_t k_len, void *val) {
     enif_alloc_binary(elem->size * sizeof(unsigned char), &value);
     memcpy(value.data, elem->data, elem->size * sizeof(unsigned char));
 
-    ERL_NIF_TERM res = enif_make_tuple2(cb_data->msg_env, 
-        cb_data->caller_ref,
-        enif_make_tuple2(cb_data->msg_env, 
-            enif_make_binary(cb_data->msg_env, &key), enif_make_binary(cb_data->msg_env, &value)));
+    ErlNifEnv *msg_env = enif_alloc_env();
+
+    if(msg_env == NULL)
+        return mk_error(cb_data->env, "env_alloc_error");;
+
+    ERL_NIF_TERM caller_ref = enif_make_copy(msg_env, cb_data->caller_ref);
+
+    ERL_NIF_TERM res = enif_make_tuple2(msg_env, 
+        caller_ref,
+        enif_make_tuple2(msg_env, 
+            enif_make_binary(msg_env, &key), enif_make_binary(msg_env, &value)));
     
-    if(!enif_send(cb_data->env, &cb_data->pid, cb_data->msg_env, res)) 
-        return -1;    
+    if(!enif_send(cb_data->env, &cb_data->pid, msg_env, res))
+    {
+        enif_free(msg_env);
+
+        return -1;
+    }
+
+    enif_free(msg_env);    
 
     return 0;
 }
@@ -228,25 +241,30 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
         return mk_error(env, "not_a_pid");
 
     if(!enif_get_local_pid(env, argv[3], &cb_data.pid))
-        return mk_error(env, "not_a_local_pid");;
+        return mk_error(env, "not_a_local_pid");
 
-    cb_data.msg_env = enif_alloc_env();
-    if(cb_data.msg_env == NULL)
+    cb_data.caller_ref = argv[2];
+   
+    // TODO this should be a worker thread since it's a long opearation (?)
+    if (art_iter_prefix(t, (char *) key.data, key.size, prefix_cb, &cb_data))
+        return mk_error(env, "art_prefix_search");
+
+    ErlNifEnv *msg_env = enif_alloc_env();
+
+    if(msg_env == NULL)
         return mk_error(env, "env_alloc_error");;
 
-    cb_data.caller_ref = enif_make_copy(cb_data.msg_env, argv[2]);
-    ERL_NIF_TERM res = enif_make_tuple2(cb_data.msg_env, cb_data.caller_ref, mk_atom(cb_data.msg_env, "ok"));    
+    ERL_NIF_TERM caller_ref = enif_make_copy(msg_env, argv[2]);
+    ERL_NIF_TERM res = enif_make_tuple2(msg_env, caller_ref, mk_atom(msg_env, "ok"));
 
-    // TODO this should be a worker thread since it's a long opearation (?)
-    if (art_iter_prefix(t, (char *) key.data, key.size, prefix_cb, &cb_data) || 
-        !enif_send(cb_data.env, &cb_data.pid, cb_data.msg_env, res))
+    if (!enif_send(env, &cb_data.pid, msg_env, res))
     {
-        enif_free(cb_data.msg_env);
+        enif_free(msg_env);
 
-        return mk_atom(env, "art_prefix_search");
+        return mk_error(env, "art_prefix_search");
     }
 
-    enif_free(cb_data.msg_env);
+    enif_free(msg_env);
 
     return mk_atom(env, "ok");
 }

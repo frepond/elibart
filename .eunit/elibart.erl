@@ -4,7 +4,8 @@
          insert/3,
          search/2,
          art_size/1,
-         prefix_search/3]).
+         prefix_search/3,
+         search_worker/1]).
 
 -on_load(init/0).
 
@@ -73,6 +74,7 @@ process_results(CallerRef, Fun) ->
 
 basic_test() ->
   {ok, Ref} = new(),
+  put("art", Ref),
   ?assertEqual({ok, empty}, insert(Ref, <<"test:element">>, <<"some_value">>)),
   ?assertEqual({ok, <<"some_value">>}, insert(Ref, <<"test:element">>, <<"some_new_value">>)),
   ?assertEqual({ok, <<"some_new_value">>}, insert(Ref, <<"test:element">>, <<"012345678901234567">>)),
@@ -81,7 +83,7 @@ basic_test() ->
   ?assertEqual({ok, <<"012345678901234567">>}, search(Ref, <<"test:element">>)).
 
 prefix_test() ->
-  {ok, Ref} = new(),
+  Ref = get("art"),
   insert(Ref, <<"api.leapsight.test">>, <<"api.leapsight.test">>),
   insert(Ref, <<"api.leapsight">>, <<"api.leapsight">>),
   insert(Ref, <<"api">>, <<"api">>),
@@ -94,17 +96,12 @@ prefix_fun(Key, Value) ->
   ?assertEqual(Key, Value),
   ?assert(lists:keymember(Key, 1, List)).
 
-volume_test() ->
+volume_insert_5M_test() ->
   {ok, Ref} = new(),
+  put("art", Ref),
   Max = 5000000,
   insert_n(Ref, Max),
-  ?assertEqual(Max, art_size(Ref)),
-  Key = list_to_binary(integer_to_list(1)),
-  ?assertEqual({ok, Key}, search(Ref, Key)),
-  Key1 = list_to_binary(integer_to_list(Max)),
-  ?assertEqual({ok, Key1}, search(Ref, Key1)),
-  Key2 = list_to_binary(integer_to_list(Max div 2)),
-  ?assertEqual({ok, Key2}, search(Ref, Key2)).
+  ?assertEqual(Max, art_size(Ref)).
 
 insert_n(Ref, N) ->
   if 
@@ -114,5 +111,46 @@ insert_n(Ref, N) ->
       {ok, empty} = insert(Ref, Key, Key),
       insert_n(Ref, N - 1)
   end.
+
+volume_search_5M_test() ->
+  Ref = get("art"),
+  Max = 5000000,
+  Key = list_to_binary(integer_to_list(1)),
+  ?assertEqual({ok, Key}, search(Ref, Key)),
+  Key1 = list_to_binary(integer_to_list(Max)),
+  ?assertEqual({ok, Key1}, search(Ref, Key1)),
+  Key2 = list_to_binary(integer_to_list(Max div 2)),
+  ?assertEqual({ok, Key2}, search(Ref, Key2)).
+
+volume_prefix_1K_test() ->
+  Ref = get("art"),
+  put("res", []),
+  prefix_search(Ref, <<"4000">>, fun volume_prefix_fun/2),
+  L = get("res"),
+  ?assertEqual(1111, length(L)),
+  erase("res").
+
+volume_prefix_fun(Key, _Value) ->
+  L = get("res"),
+  put("res", [Key | L]).
+
+multithread_search_test() ->
+  Ref = get("art"),
+  multithread_search_n(Ref, 10).
+
+multithread_search_n(Ref, N) ->
+  if 
+    N > 0 ->
+      spawn(?MODULE, search_worker, [Ref]),
+      multithread_search_n(Ref, N - 1);
+    true -> 
+      spawn(?MODULE, search_worker, [Ref])
+  end.
+
+search_worker(Ref) ->
+  Key = <<"100">>,
+  prefix_search(Ref, <<"10000">>, fun (_K, _V) -> k end),
+  ?assertEqual(empty, search(Ref, <<"trash">>)),
+  ?assertEqual({ok, Key}, search(Ref, Key)).
 
 -endif.
