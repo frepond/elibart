@@ -10,4 +10,5 @@ TODO:
 - Sanitise Erlang API and NIF code.
 - Add missing functions wrappers.
 - Adapt insert and search functions to take arbitrary terms and not just binaries.
+- Correct use of eunit.
 - Test, test, test.

@@ -4,18 +4,17 @@
          insert/3,
          search/2,
          art_size/1,
-         prefix_search/3,
-         search_worker/1]).
+         prefix_search/3]).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -on_load(init/0).
 
 -define(nif_stub, nif_stub_error(?LINE)).
 nif_stub_error(Line) ->
     erlang:nif_error({nif_not_loaded,module,?MODULE,line,Line}).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
 
 %% This cannot be a separate function. Code must be inline to trigger
 %% Erlang compiler's use of optimized selective receive.
@@ -136,16 +135,16 @@ volume_prefix_fun(Key, _Value) ->
 
 multithread_search_test() ->
   Ref = get("art"),
-  multithread_search_n(Ref, 10).
-
-multithread_search_n(Ref, N) ->
-  if 
-    N > 0 ->
-      spawn(?MODULE, search_worker, [Ref]),
-      multithread_search_n(Ref, N - 1);
-    true -> 
-      spawn(?MODULE, search_worker, [Ref])
-  end.
+  {spawn, [search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref),
+            search_worker(Ref)]}.
 
 search_worker(Ref) ->
   Key = <<"100">>,
