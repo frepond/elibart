@@ -5,6 +5,18 @@ NIF wrapper for libart (http://github.com/armon/libart).
 
 This is the just a first quick & dirty version of the NIF. This is intended to be tested as memory storage for Lepasight Semantic Dataspace (http://leapsight.com/what_we_do.html).
 
+Install scons and check:
+
+- OSX
+
+
+    $ brew install scons check
+
+- Ubuntu
+
+
+    $ sudo apt-get install scons check 
+
 To compile and test de library:
 
     # get deps and compile
