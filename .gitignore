@@ -12,3 +12,5 @@ c_src/elibart.o
 elibart.sublime-workspace
 
 elibart.sublime-project
+
+/.eunit

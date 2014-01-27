@@ -1,6 +1,7 @@
 -module(elibart).
 
 -export([new/0,
+         destroy/1,
          insert/3,
          search/2,
          art_size/1,
@@ -39,6 +40,9 @@ init() ->
 new() ->
     ?nif_stub.
 
+destroy(_Ref) ->
+    ?nif_stub.
+
 insert(_Ref, _Key, _Value) ->
     ?nif_stub.
 
@@ -71,18 +75,21 @@ process_results(CallerRef, Fun) ->
 %% ===================================================================
 -ifdef(TEST).
 
+-define(MAX, 5000000).
+
 basic_test() ->
   {ok, Ref} = new(),
-  put("art", Ref),
   ?assertEqual({ok, empty}, insert(Ref, <<"test:element">>, <<"some_value">>)),
   ?assertEqual({ok, <<"some_value">>}, insert(Ref, <<"test:element">>, <<"some_new_value">>)),
   ?assertEqual({ok, <<"some_new_value">>}, insert(Ref, <<"test:element">>, <<"012345678901234567">>)),
   ?assertEqual(empty, search(Ref, <<"trash">>)),
   insert(Ref, <<"new">>,<<>>),
-  ?assertEqual({ok, <<"012345678901234567">>}, search(Ref, <<"test:element">>)).
+  ?assertEqual({ok, <<"012345678901234567">>}, search(Ref, <<"test:element">>)),
+  destroy(Ref).
 
 prefix_test() ->
-  Ref = get("art"),
+  {ok, Ref} = new(),
+  put("art", Ref),
   insert(Ref, <<"api.leapsight.test">>, <<"api.leapsight.test">>),
   insert(Ref, <<"api.leapsight">>, <<"api.leapsight">>),
   insert(Ref, <<"api">>, <<"api">>),
@@ -96,11 +103,10 @@ prefix_fun(Key, Value) ->
   ?assert(lists:keymember(Key, 1, List)).
 
 volume_insert_5M_test() ->
-  {ok, Ref} = new(),
+  Ref = get("art"),
   put("art", Ref),
-  Max = 5000000,
-  insert_n(Ref, Max),
-  ?assertEqual(Max, art_size(Ref)).
+  insert_n(Ref, ?MAX),
+  ?assertEqual(?MAX + 4, art_size(Ref)).
 
 insert_n(Ref, N) ->
   if 
@@ -113,12 +119,11 @@ insert_n(Ref, N) ->
 
 volume_search_5M_test() ->
   Ref = get("art"),
-  Max = 5000000,
   Key = list_to_binary(integer_to_list(1)),
   ?assertEqual({ok, Key}, search(Ref, Key)),
-  Key1 = list_to_binary(integer_to_list(Max)),
+  Key1 = list_to_binary(integer_to_list(?MAX)),
   ?assertEqual({ok, Key1}, search(Ref, Key1)),
-  Key2 = list_to_binary(integer_to_list(Max div 2)),
+  Key2 = list_to_binary(integer_to_list(?MAX div 2)),
   ?assertEqual({ok, Key2}, search(Ref, Key2)).
 
 volume_prefix_1K_test() ->
