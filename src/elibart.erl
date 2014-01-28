@@ -5,7 +5,8 @@
          insert/3,
          search/2,
          art_size/1,
-         prefix_search/3]).
+         prefix_search/3,
+         fold/4]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -38,10 +39,10 @@ init() ->
     erlang:load_nif(filename:join(PrivDir, ?MODULE), 0).
 
 new() ->
-    ?nif_stub.
+  ?nif_stub.
 
 destroy(_Ref) ->
-    ?nif_stub.
+  ?nif_stub.
 
 insert(_Ref, _Key, _Value) ->
     ?nif_stub.
@@ -67,6 +68,20 @@ process_results(CallerRef, Fun) ->
       Fun(Key, Value),
       process_results(CallerRef, Fun);
     ok -> ok
+  end.
+
+fold(Ref, Prefix, Fun, Acc) ->
+  CallerRef = make_ref(),
+  ok = async_prefix_search(Ref, Prefix, CallerRef, self()),
+  do_fold(Fun, Acc, CallerRef).
+
+do_fold(Fun, Acc, CallerRef) ->
+  Res = ?WAIT_FOR_REPLY(CallerRef),
+  case Res of
+    {Key, Value} -> 
+      do_fold(Fun, Fun(Acc, {Key, Value}), CallerRef);
+    ok -> 
+      Acc
   end.
 
 
@@ -95,6 +110,14 @@ prefix_test() ->
   insert(Ref, <<"api">>, <<"api">>),
   insert(Ref, <<"apa.leapsight.test">>, <<"apa.leapsight.test">>),
   prefix_search(Ref, <<"api">>, fun prefix_fun/2).
+
+fold_test() ->
+  Ref = get("art"),
+  List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
+          {<<"api.leapsight.test">>, <<"api.leapsight.test">>}],
+  Res = fold(Ref, <<"api">>, fun(Acc, KV) -> [KV | Acc] end, []),
+  ?assert(lists:all(fun({K, V}) -> lists:keymember(K, 1, List) end, Res)),
+  ?assertEqual(length(Res), 3).
 
 prefix_fun(Key, Value) ->
   List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
