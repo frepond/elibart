@@ -79,7 +79,7 @@ do_fold(Fun, Acc, CallerRef) ->
   Res = ?WAIT_FOR_REPLY(CallerRef),
   case Res of
     {Key, Value} -> 
-      do_fold(Fun, Fun(Acc, {Key, Value}), CallerRef);
+      do_fold(Fun, Fun({Key, Value}, Acc), CallerRef);
     ok -> 
       Acc
   end.
