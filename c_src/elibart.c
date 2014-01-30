@@ -29,6 +29,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#define BUFF_SIZE 262144
+
 static ErlNifResourceType* elibart_RESOURCE = NULL;
 
 typedef struct
@@ -146,7 +148,9 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
     art_tree* t;
     ErlNifBinary key, value;
     art_elem_struct *elem;
-    unsigned char key_copy[65536]; // 64K bufffer
+    unsigned char buffer[BUFF_SIZE]; // 256Kb buffer
+    unsigned char *key_copy = buffer;
+
 
     // extract arguments atr_tree, key, value
     if (argc != 3)
@@ -157,6 +161,10 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
         return enif_make_badarg(env);
     if (!enif_inspect_binary(env, argv[2], &value))
         return enif_make_badarg(env);
+
+    // buffer size not enough, pay the price
+    if (key.size > BUFF_SIZE)
+        key_copy = malloc((key.size + 1) * sizeof(unsigned char));
 
     // TODO review -- is it possible not to copy the key just to add '\0'?
     memcpy(key_copy, key.data, key.size);
@@ -174,6 +182,10 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
 
     // insert the element in the art_tree
     art_elem_struct *old_elem = art_insert(t, (char *) key_copy, key.size, elem);
+
+    // buffer size not enough, pay the price
+    if (key.size > BUFF_SIZE)
+        free(key_copy);
 
     // the inserted key is new
     if (!old_elem) 

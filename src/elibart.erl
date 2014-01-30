@@ -115,7 +115,7 @@ fold_test() ->
   Ref = get("art"),
   List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
           {<<"api.leapsight.test">>, <<"api.leapsight.test">>}],
-  Res = fold(Ref, <<"api">>, fun(Acc, KV) -> [KV | Acc] end, []),
+  Res = fold(Ref, <<"api">>, fun(KV, Acc) -> [KV | Acc] end, []),
   ?assert(lists:all(fun({K, V}) -> lists:keymember(K, 1, List) end, Res)),
   ?assertEqual(length(Res), 3).
 
