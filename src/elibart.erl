@@ -116,7 +116,7 @@ fold_test() ->
   List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
           {<<"api.leapsight.test">>, <<"api.leapsight.test">>}],
   Res = fold(Ref, <<"api">>, fun(KV, Acc) -> [KV | Acc] end, []),
-  ?assert(lists:all(fun({K, V}) -> lists:keymember(K, 1, List) end, Res)),
+  ?assert(lists:all(fun({K, _V}) -> lists:keymember(K, 1, List) end, Res)),
   ?assertEqual(length(Res), 3).
 
 prefix_fun(Key, Value) ->
@@ -128,16 +128,16 @@ prefix_fun(Key, Value) ->
 volume_insert_5M_test() ->
   Ref = get("art"),
   put("art", Ref),
-  insert_n(Ref, ?MAX),
+  insert_n(Ref, 0, ?MAX),
   ?assertEqual(?MAX + 4, art_size(Ref)).
 
-insert_n(Ref, N) ->
+insert_n(Ref, N, M) ->
   if 
-    N =:= 0 -> ok;
+    N =:= M -> ok;
     true -> 
-      Key = list_to_binary(integer_to_list(N)),
-      {ok, empty} = insert(Ref, Key, Key),
-      insert_n(Ref, N - 1)
+      Key = list_to_binary(integer_to_list(M)),
+      {ok, _} = insert(Ref, Key, Key),
+      insert_n(Ref, N, M - 1)
   end.
 
 volume_search_5M_test() ->
@@ -163,7 +163,8 @@ volume_prefix_fun(Key, _Value) ->
 
 multithread_search_test() ->
   Ref = get("art"),
-  {spawn, [search_worker(Ref),
+  {spawn, [ insert_worker(Ref),
+            search_worker(Ref),
             search_worker(Ref),
             search_worker(Ref),
             search_worker(Ref),
@@ -174,9 +175,13 @@ multithread_search_test() ->
             search_worker(Ref),
             search_worker(Ref)]}.
 
+insert_worker(Ref) ->
+  insert_n(Ref, 4500000, 5500000).
+
 search_worker(Ref) ->
   Key = <<"100">>,
-  prefix_search(Ref, <<"10000">>, fun (_K, _V) -> k end),
+  L = fold(Ref, <<"45000">>, fun (KV, Acc) -> [KV | Acc] end, []),
+  ?assertEqual(111, length(L)),
   ?assertEqual(empty, search(Ref, <<"trash">>)),
   ?assertEqual({ok, Key}, search(Ref, Key)).
 
