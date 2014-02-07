@@ -288,9 +288,7 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     art_tree* t;
     ErlNifBinary key;
     callback_data cb_data;
-    unsigned char buffer[BUFF_SIZE]; // 256K buffer
-    unsigned char *key_copy = buffer;
-    
+
     // extract arguments atr_tree, key
     if (argc != 4)
         return enif_make_badarg(env);
@@ -308,21 +306,9 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
 
     cb_data.caller_ref = argv[2];
    
-    // buffer size not enough, pay the price
-    if (key.size > BUFF_SIZE)
-        key_copy = malloc(key.size + 1);
-
-    // TODO review -- is it possible not to copy the key just to add '\0'?
-    memcpy(key_copy, key.data, key.size);
-    key_copy[key.size] = '\0';
-
     // TODO this should be a worker thread since it's a long opearation (?)
-    if (art_iter_prefix(t, key_copy, key.size, prefix_cb, &cb_data))
+    if (art_iter_prefix(t, key.data, key.size, prefix_cb, &cb_data))
         return mk_error(env, "art_prefix_search");
-
-    // buffer size not enough, pay the price
-    if (key.size > BUFF_SIZE)
-        free(key_copy);
 
     ErlNifEnv *msg_env = enif_alloc_env();
 
