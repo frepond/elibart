@@ -84,6 +84,9 @@ do_fold(Fun, Acc, CallerRef) ->
       Acc
   end.
 
+collect(Ref, Prefix) ->
+  fold(Ref, Prefix, fun(KV, Acc) -> [KV | Acc] end, []).
+
 
 %% ===================================================================
 %% EUnit tests
@@ -105,25 +108,12 @@ basic_test() ->
 prefix_test() ->
   {ok, Ref} = new(),
   put("art", Ref),
-  insert(Ref, <<"api.leapsight.test">>, <<"api.leapsight.test">>),
-  insert(Ref, <<"api.leapsight">>, <<"api.leapsight">>),
-  insert(Ref, <<"api">>, <<"api">>),
-  insert(Ref, <<"apa.leapsight.test">>, <<"apa.leapsight.test">>),
-  prefix_search(Ref, <<"api">>, fun prefix_fun/2).
-
-fold_test() ->
-  Ref = get("art"),
   List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
-          {<<"api.leapsight.test">>, <<"api.leapsight.test">>}],
-  Res = fold(Ref, <<"api">>, fun(KV, Acc) -> [KV | Acc] end, []),
+          {<<"api.leapsight.test">>, <<"api.leapsight.test">>}, {<<"apb">>, <<>>}],
+  lists:foreach(fun({K, V}) -> insert(Ref, K, V) end, List),
+  Res = collect(Ref, <<"api">>),
   ?assert(lists:all(fun({K, _V}) -> lists:keymember(K, 1, List) end, Res)),
-  ?assertEqual(length(Res), 3).
-
-prefix_fun(Key, Value) ->
-  List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
-            {<<"api.leapsight.test">>, <<"api.leapsight.test">>}],
-  ?assertEqual(Key, Value),
-  ?assert(lists:keymember(Key, 1, List)).
+  ?assertEqual(3, length(Res)).
 
 volume_insert_5M_test() ->
   Ref = get("art"),
