@@ -148,9 +148,6 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
     art_tree* t;
     ErlNifBinary key, value;
     art_elem_struct *elem;
-    unsigned char buffer[BUFF_SIZE]; // 256Kb buffer
-    unsigned char *key_copy = buffer;
-
 
     // extract arguments atr_tree, key, value
     if (argc != 3)
@@ -161,14 +158,6 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
         return enif_make_badarg(env);
     if (!enif_inspect_binary(env, argv[2], &value))
         return enif_make_badarg(env);
-
-    // buffer size not enough, pay the price
-    if (key.size > BUFF_SIZE)
-        key_copy = malloc(key.size + 1);
-
-    // TODO review -- is it possible not to copy the key just to add '\0'?
-    memcpy(key_copy, key.data, key.size);
-    key_copy[key.size] = '\0';
 
     //create art element
     elem = malloc(sizeof(art_elem_struct));
@@ -181,11 +170,7 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
     memcpy(elem->data, value.data, value.size);
 
     // insert the element in the art_tree
-    art_elem_struct *old_elem = art_insert(t, key_copy, key.size + 1, elem);
-
-    // buffer size not enough, pay the price
-    if (key.size > BUFF_SIZE)
-        free(key_copy);
+    art_elem_struct *old_elem = art_insert(t, key_copy, key.size, elem);
 
     // the inserted key is new
     if (!old_elem) 
@@ -207,8 +192,6 @@ static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
 {
     art_tree* t;
     ErlNifBinary key;
-    unsigned char buffer[BUFF_SIZE]; // 256K buffer
-    unsigned char *key_copy = buffer;
     
     // extract arguments atr_tree, key
     if(argc != 2)
@@ -218,20 +201,8 @@ static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
     if (!enif_inspect_binary(env, argv[1], &key))
         return enif_make_badarg(env);
 
-    // buffer size not enough, pay the price
-    if (key.size > BUFF_SIZE)
-        key_copy = malloc(key.size + 1);
-
-    // TODO review -- is it possible not to copy the key just to add '\0'?
-    memcpy(key_copy, key.data, key.size);
-    key_copy[key.size] = '\0';
-
     // search the art_tree for the given key
-    art_elem_struct *value = art_search(t, key_copy, key.size + 1);
-
-    // buffer size not enough, pay the price
-    if (key.size > BUFF_SIZE)
-        free(key_copy);
+    art_elem_struct *value = art_search(t, key_copy, key.size);
 
     // key does not exist in the art_tree
     if (!value)
@@ -251,8 +222,8 @@ static int prefix_cb(void *data, const unsigned char *k, uint32_t k_len, void *v
     art_elem_struct *elem = val;
     ErlNifBinary key, value;
 
-    enif_alloc_binary(k_len - 1, &key);
-    memcpy(key.data, k, k_len - 1);
+    enif_alloc_binary(k_len, &key);
+    memcpy(key.data, k, k_len);
 
     enif_alloc_binary(elem->size, &value);
     memcpy(value.data, elem->data, elem->size);

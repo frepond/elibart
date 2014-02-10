@@ -6,7 +6,8 @@
          search/2,
          art_size/1,
          prefix_search/3,
-         fold/4]).
+         fold/4,
+         collect/2]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

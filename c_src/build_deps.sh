@@ -8,6 +8,7 @@ if [ `uname -s` = 'SunOS' -a "${POSIX_SHELL}" != "true" ]; then
 fi
 unset POSIX_SHELL # clear it so if we invoke other scripts, they run as ksh as well
 
+LIBART_REPO="https://github.com/frepond/libart.git"
 LIBART_VSN="master"
 
 set -e
@@ -40,7 +41,7 @@ case "$1" in
 
     compile)
         if [ ! -d libart ]; then
-            git clone https://github.com/armon/libart.git
+            git $LIBART_REPO 
             (cd libart && git checkout $LIBART_VSN)
         fi
         
@@ -54,14 +55,14 @@ case "$1" in
 
     get-deps)
         if [ ! -d libart ]; then
-            git clone https://github.com/armon/libart.git
+            git clone $LIBART_REPO
             (cd libart && git checkout $LIBART_VSN)
         fi
         ;;
 
     *)
         if [ ! -d libart ]; then
-            git clone https://github.com/armon/libart.git
+            git clone $LIBART_REPO
             (cd libart && git checkout $LIBART_VSN)
         fi
 
