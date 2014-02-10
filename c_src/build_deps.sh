@@ -41,7 +41,7 @@ case "$1" in
 
     compile)
         if [ ! -d libart ]; then
-            git $LIBART_REPO 
+            git clone $LIBART_REPO 
             (cd libart && git checkout $LIBART_VSN)
         fi
         

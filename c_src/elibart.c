@@ -170,7 +170,7 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
     memcpy(elem->data, value.data, value.size);
 
     // insert the element in the art_tree
-    art_elem_struct *old_elem = art_insert(t, key_copy, key.size, elem);
+    art_elem_struct *old_elem = art_insert(t, key.data, key.size, elem);
 
     // the inserted key is new
     if (!old_elem) 
@@ -202,7 +202,7 @@ static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
         return enif_make_badarg(env);
 
     // search the art_tree for the given key
-    art_elem_struct *value = art_search(t, key_copy, key.size);
+    art_elem_struct *value = art_search(t, key.data, key.size);
 
     // key does not exist in the art_tree
     if (!value)
