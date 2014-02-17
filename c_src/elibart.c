@@ -63,12 +63,13 @@ static ERL_NIF_TERM elibart_size(ErlNifEnv* env, int argc,
 /* Some utility fucntions */
 void printBinary(ErlNifBinary* bin)
 {
-    printf("%zu|", bin->size);
-    fwrite(bin->data, 1, bin->size, stdout);
-    fputs("|", stdout);
+    fprintf(stderr, "%lu|", bin->size);
+    fflush(stderr);
+    fwrite(bin->data, 1, bin->size, stderr);
+    fputs("|\n", stderr);
 }
 
-ERL_NIF_TERM
+ERL_NIF_TERM    
 mk_atom(ErlNifEnv* env, const char* atom)
 {
     ERL_NIF_TERM ret;

@@ -106,6 +106,22 @@ basic_test() ->
   ?assertEqual({ok, <<"012345678901234567">>}, search(Ref, <<"test:element">>)),
   destroy(Ref).
 
+prefix_numbers_test() ->
+  {ok, Ref} = new(),
+  Ns = [<<"1">>, <<"10">>, <<"100">>, <<"1000">>, <<"10000">>, <<"100000">>, <<"1000000">>, 
+        <<"10000000">>, <<"100000000">>, <<"1000000000">>],
+  lists:foreach(fun(N) -> insert(Ref, N, N) end, Ns),
+  ?assertEqual({ok, <<"1">>}, search(Ref, <<"1">>)),
+  ?assertEqual({ok, <<"10">>}, search(Ref, <<"10">>)),
+  ?assertEqual({ok, <<"100">>}, search(Ref, <<"100">>)),
+  ?assertEqual({ok, <<"1000">>}, search(Ref, <<"1000">>)),
+  ?assertEqual({ok, <<"10000">>}, search(Ref, <<"10000">>)),
+  ?assertEqual({ok, <<"100000">>}, search(Ref, <<"100000">>)),
+  ?assertEqual({ok, <<"1000000">>}, search(Ref, <<"1000000">>)),
+  ?assertEqual({ok, <<"10000000">>}, search(Ref, <<"10000000">>)),
+  ?assertEqual({ok, <<"100000000">>}, search(Ref, <<"100000000">>)),
+  ?assertEqual({ok, <<"1000000000">>}, search(Ref, <<"1000000000">>)).
+
 prefix_test() ->
   {ok, Ref} = new(),
   put("art", Ref),
