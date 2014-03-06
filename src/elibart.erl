@@ -106,22 +106,6 @@ basic_test() ->
   ?assertEqual({ok, <<"012345678901234567">>}, search(Ref, <<"test:element">>)),
   destroy(Ref).
 
-prefix_numbers_test() ->
-  {ok, Ref} = new(),
-  Ns = [<<"1">>, <<"10">>, <<"100">>, <<"1000">>, <<"10000">>, <<"100000">>, <<"1000000">>, 
-        <<"10000000">>, <<"100000000">>, <<"1000000000">>],
-  lists:foreach(fun(N) -> insert(Ref, N, N) end, Ns),
-  ?assertEqual({ok, <<"1">>}, search(Ref, <<"1">>)),
-  ?assertEqual({ok, <<"10">>}, search(Ref, <<"10">>)),
-  ?assertEqual({ok, <<"100">>}, search(Ref, <<"100">>)),
-  ?assertEqual({ok, <<"1000">>}, search(Ref, <<"1000">>)),
-  ?assertEqual({ok, <<"10000">>}, search(Ref, <<"10000">>)),
-  ?assertEqual({ok, <<"100000">>}, search(Ref, <<"100000">>)),
-  ?assertEqual({ok, <<"1000000">>}, search(Ref, <<"1000000">>)),
-  ?assertEqual({ok, <<"10000000">>}, search(Ref, <<"10000000">>)),
-  ?assertEqual({ok, <<"100000000">>}, search(Ref, <<"100000000">>)),
-  ?assertEqual({ok, <<"1000000000">>}, search(Ref, <<"1000000000">>)).
-
 prefix_test() ->
   {ok, Ref} = new(),
   put("art", Ref),
@@ -158,15 +142,8 @@ volume_search_5M_test() ->
 
 volume_prefix_1K_test() ->
   Ref = get("art"),
-  put("res", []),
-  prefix_search(Ref, <<"4000">>, fun volume_prefix_fun/2),
-  L = get("res"),
-  ?assertEqual(1111, length(L)),
-  erase("res").
-
-volume_prefix_fun(Key, _Value) ->
-  L = get("res"),
-  put("res", [Key | L]).
+  L = collect(Ref, <<"4000">>),
+  ?assertEqual(1111, length(L)).
 
 multithread_search_test() ->
   Ref = get("art"),
@@ -187,7 +164,7 @@ insert_worker(Ref) ->
 
 search_worker(Ref) ->
   Key = <<"100">>,
-  L = fold(Ref, <<"45000">>, fun (KV, Acc) -> [KV | Acc] end, []),
+  L = collect(Ref, <<"45000">>),
   ?assertEqual(111, length(L)),
   ?assertEqual(empty, search(Ref, <<"trash">>)),
   ?assertEqual({ok, Key}, search(Ref, Key)).
