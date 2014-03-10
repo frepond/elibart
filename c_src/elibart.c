@@ -45,8 +45,11 @@ typedef struct
     ErlNifPid pid;
     ERL_NIF_TERM caller_ref;
     ERL_NIF_TERM t;
-    ERL_NIF_TERM key;   
+    ERL_NIF_TERM key; 
+    ERL_NIF_TERM result_acc;  
 } callback_data;
+
+
 
 // Prototypes
 static ERL_NIF_TERM elibart_new(ErlNifEnv* env, int argc,
@@ -236,26 +239,9 @@ static int prefix_cb(void *data, const unsigned char *k, uint32_t k_len, void *v
     enif_alloc_binary(elem->size, &value);
     memcpy(value.data, elem->data, elem->size);
 
-    ErlNifEnv *msg_env = enif_alloc_env();
-
-    if(msg_env == NULL)
-        return mk_error(cb_data->env, "env_alloc_error");;
-
-    ERL_NIF_TERM caller_ref = enif_make_copy(msg_env, cb_data->caller_ref);
-
-    ERL_NIF_TERM res = enif_make_tuple2(msg_env, 
-        caller_ref,
-        enif_make_tuple2(msg_env, 
-            enif_make_binary(msg_env, &key), enif_make_binary(msg_env, &value)));
-
-    
-    if(!enif_send(NULL, &cb_data->pid, msg_env, res)) {
-        enif_free_env(msg_env);
-
-        return -1;
-    }
-
-    enif_free_env(msg_env);
+    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env, 
+            enif_make_binary(cb_data->env, &key), enif_make_binary(cb_data->env, &value));
+    cb_data->result_acc = enif_make_list_cell(cb_data->env, res, cb_data->result_acc);
 
     return 0;
 }
@@ -275,7 +261,8 @@ static void* async_prefix_search(void* data)
     if (art_iter_prefix(t, key.data, key.size, prefix_cb, cb_data))
         enif_send(NULL, &cb_data->pid, cb_data->env, mk_error(cb_data->env, "art_prefix_search"));
 
-    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env, cb_data->caller_ref, mk_atom(cb_data->env, "ok"));
+    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env, cb_data->caller_ref, 
+                        enif_make_tuple2(cb_data->env, mk_atom(cb_data->env, "ok"), cb_data->result_acc));
 
     enif_send(NULL, &cb_data->pid, cb_data->env, res);
     enif_free_env(cb_data->env);
@@ -312,6 +299,8 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     ErlNifThreadOpts *opts;
 
     opts = enif_thread_opts_create("elibart_prefix_search");
+    // We initialise the results accumulator list
+    cb_data->result_acc = enif_make_list(cb_data->env, 0),
     enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
     //enif_thread_join(tid, (void**)&tidret);
 

@@ -5,7 +5,8 @@
          insert/3,
          search/2,
          art_size/1,
-         prefix_search/3,
+         stream_prefix_search/3,
+         prefix_search/2,
          fold/4,
          collect/2]).
 
@@ -22,10 +23,15 @@ nif_stub_error(Line) ->
 %% This cannot be a separate function. Code must be inline to trigger
 %% Erlang compiler's use of optimized selective receive.
 -define(WAIT_FOR_REPLY(Ref),
-        receive {Ref, Reply} ->
-                Reply
+        receive 
+          {Ref, ok} ->
+            ok;
+          {Ref, {ok, _L} = R} ->
+            R;
+          {Ref, Bin} ->
+                Bin
         after
-            100 -> error
+            1000 -> error
         end).
 
 init() ->
@@ -57,7 +63,13 @@ art_size(_Ref) ->
 async_prefix_search(_Ref, _Key, _CallerRef, _Pid) ->
   ?nif_stub.
 
-prefix_search(Ref, Key, Fun) ->
+prefix_search(Ref, Key) ->
+  CallerRef = make_ref(),
+  ok = async_prefix_search(Ref, Key, CallerRef, self()),
+  {ok, Res} = ?WAIT_FOR_REPLY(CallerRef),
+  Res.
+
+stream_prefix_search(Ref, Key, Fun) ->
   CallerRef = make_ref(),
   ok = async_prefix_search(Ref, Key, CallerRef, self()),
   process_results(CallerRef, Fun).
@@ -79,6 +91,8 @@ fold(Ref, Prefix, Fun, Acc) ->
 do_fold(Fun, Acc, CallerRef) ->
   Res = ?WAIT_FOR_REPLY(CallerRef),
   case Res of
+    {ok, List} when is_list(List) ->
+      [Fun(K,V) || {K,V} <- List];
     {Key, Value} -> 
       do_fold(Fun, Fun({Key, Value}, Acc), CallerRef);
     ok -> 
@@ -112,7 +126,7 @@ prefix_test() ->
   List = [{<<"api">>, <<"api">>}, {<<"api.leapsight">>, <<"api.leapsight">>}, 
           {<<"api.leapsight.test">>, <<"api.leapsight.test">>}, {<<"apb">>, <<>>}],
   lists:foreach(fun({K, V}) -> insert(Ref, K, V) end, List),
-  Res = collect(Ref, <<"api">>),
+  Res = prefix_search(Ref, <<"api">>),
   ?assert(lists:all(fun({K, _V}) -> lists:keymember(K, 1, List) end, Res)),
   ?assertEqual(3, length(Res)).
 
@@ -142,7 +156,7 @@ volume_search_5M_test() ->
 
 volume_prefix_1K_test() ->
   Ref = get("art"),
-  L = collect(Ref, <<"4000">>),
+  L = prefix_search(Ref, <<"4000">>),
   ?assertEqual(1111, length(L)).
 
 multithread_search_test() ->
@@ -164,7 +178,7 @@ insert_worker(Ref) ->
 
 search_worker(Ref) ->
   Key = <<"100">>,
-  L = collect(Ref, <<"45000">>),
+  L = prefix_search(Ref, <<"45000">>),
   ?assertEqual(111, length(L)),
   ?assertEqual(empty, search(Ref, <<"trash">>)),
   ?assertEqual({ok, Key}, search(Ref, Key)).
