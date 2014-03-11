@@ -68,7 +68,7 @@ prefix_search(Ref, Prefix) ->
   Res.
 
 fold(Ref, Prefix, Fun, Acc) ->
-  lists:fold(Fun, Acc, prefix_search(Ref, Prefix)).
+  lists:foldl(Fun, Acc, prefix_search(Ref, Prefix)).
 
 %% ===================================================================
 %% EUnit tests
