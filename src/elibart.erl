@@ -5,10 +5,8 @@
          insert/3,
          search/2,
          art_size/1,
-         stream_prefix_search/3,
          prefix_search/2,
-         fold/4,
-         collect/2]).
+         fold/4]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -60,48 +58,17 @@ search(_Ref, _Key) ->
 art_size(_Ref) ->
   ?nif_stub.
 
-async_prefix_search(_Ref, _Key, _CallerRef, _Pid) ->
+async_prefix_search(_Ref, _Prefix, _CallerRef, _Pid) ->
   ?nif_stub.
 
-prefix_search(Ref, Key) ->
+prefix_search(Ref, Prefix) ->
   CallerRef = make_ref(),
-  ok = async_prefix_search(Ref, Key, CallerRef, self()),
+  ok = async_prefix_search(Ref, Prefix, CallerRef, self()),
   {ok, Res} = ?WAIT_FOR_REPLY(CallerRef),
   Res.
 
-stream_prefix_search(Ref, Key, Fun) ->
-  CallerRef = make_ref(),
-  ok = async_prefix_search(Ref, Key, CallerRef, self()),
-  process_results(CallerRef, Fun).
-
-process_results(CallerRef, Fun) ->
-  Res = ?WAIT_FOR_REPLY(CallerRef),
-  case Res of
-    {Key, Value} -> 
-      Fun(Key, Value),
-      process_results(CallerRef, Fun);
-    ok -> ok
-  end.
-
 fold(Ref, Prefix, Fun, Acc) ->
-  CallerRef = make_ref(),
-  ok = async_prefix_search(Ref, Prefix, CallerRef, self()),
-  do_fold(Fun, Acc, CallerRef).
-
-do_fold(Fun, Acc, CallerRef) ->
-  Res = ?WAIT_FOR_REPLY(CallerRef),
-  case Res of
-    {ok, List} when is_list(List) ->
-      [Fun(K,V) || {K,V} <- List];
-    {Key, Value} -> 
-      do_fold(Fun, Fun({Key, Value}, Acc), CallerRef);
-    ok -> 
-      Acc
-  end.
-
-collect(Ref, Prefix) ->
-  fold(Ref, Prefix, fun(KV, Acc) -> [KV | Acc] end, []).
-
+  lists:fold(Fun, Acc, prefix_search(Ref, Prefix)).
 
 %% ===================================================================
 %% EUnit tests
