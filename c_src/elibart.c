@@ -295,14 +295,12 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     cb_data->caller_ref = enif_make_copy(cb_data->env, argv[2]);
 
     ErlNifTid tid;
-    //, *tidret;
     ErlNifThreadOpts *opts;
 
     opts = enif_thread_opts_create("elibart_prefix_search");
     // We initialise the results accumulator list
     cb_data->result_acc = enif_make_list(cb_data->env, 0),
     enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
-    //enif_thread_join(tid, (void**)&tidret);
 
     return mk_atom(env, "ok");
 }
