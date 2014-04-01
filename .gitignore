@@ -14,3 +14,7 @@ elibart.sublime-workspace
 elibart.sublime-project
 
 /.eunit
+
+*.iml
+
+.idea/*
