@@ -313,7 +313,7 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
 
     opts = enif_thread_opts_create("elibart_prefix_search");
     enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
-    //enif_thread_join(tid, (void**)&tidret);
+    enif_thread_join(tid, NULL);
 
     return mk_atom(env, "ok");
 }
