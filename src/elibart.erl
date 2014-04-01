@@ -20,7 +20,7 @@ nif_stub_error(Line) ->
 
 %% This cannot be a separate function. Code must be inline to trigger
 %% Erlang compiler's use of optimized selective receive.
--define(WAIT_FOR_REPLY(Ref),
+-define(WAIT_FOR_REPLY(Ref, TOut),
         receive 
           {Ref, ok} ->
             ok;
@@ -29,7 +29,7 @@ nif_stub_error(Line) ->
           {Ref, Bin} ->
                 Bin
         after
-            1000 -> error
+            TOut -> {error, timeout}
         end).
 
 init() ->
@@ -61,14 +61,32 @@ art_size(_Ref) ->
 async_prefix_search(_Ref, _Prefix, _CallerRef, _Pid) ->
   ?nif_stub.
 
+-spec prefix_search(Ref :: term(), Prefix :: binary()) ->
+  {ok, term()} |
+  {error, Reason :: term()}.
+
 prefix_search(Ref, Prefix) ->
   CallerRef = make_ref(),
   ok = async_prefix_search(Ref, Prefix, CallerRef, self()),
-  {ok, Res} = ?WAIT_FOR_REPLY(CallerRef),
-  Res.
+  Reply = ?WAIT_FOR_REPLY(CallerRef, 10000),
+  case Reply of
+    {ok, Res} ->
+      Res;
+    {error, _} = Error ->
+      Error
+  end.
+
+-spec fold(Ref :: term(), Prefix :: binary(), Fun :: function(), Acc :: term()) ->
+  {ok, term()} |
+  {error, Reason :: term()}.
 
 fold(Ref, Prefix, Fun, Acc) ->
-  lists:foldl(Fun, Acc, prefix_search(Ref, Prefix)).
+  case prefix_search(Ref, Prefix) of
+    {error, _} = Error ->
+      Error;
+    Res ->
+      lists:foldl(Fun, Acc, Res);
+  end.
 
 %% ===================================================================
 %% EUnit tests
