@@ -301,6 +301,7 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     // We initialise the results accumulator list
     cb_data->result_acc = enif_make_list(cb_data->env, 0),
     enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
+    enif_thread_join(tid, NULL);
 
     return mk_atom(env, "ok");
 }

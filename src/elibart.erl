@@ -68,7 +68,7 @@ async_prefix_search(_Ref, _Prefix, _CallerRef, _Pid) ->
 prefix_search(Ref, Prefix) ->
   CallerRef = make_ref(),
   ok = async_prefix_search(Ref, Prefix, CallerRef, self()),
-  Reply = ?WAIT_FOR_REPLY(CallerRef, 10000),
+  Reply = ?WAIT_FOR_REPLY(CallerRef, 1000),
   case Reply of
     {ok, Res} ->
       Res;
@@ -85,7 +85,7 @@ fold(Ref, Prefix, Fun, Acc) ->
     {error, _} = Error ->
       Error;
     Res ->
-      lists:foldl(Fun, Acc, Res);
+      lists:foldl(Fun, Acc, Res)
   end.
 
 %% ===================================================================
