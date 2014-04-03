@@ -58,7 +58,7 @@ search(_Ref, _Key) ->
 art_size(_Ref) ->
   ?nif_stub.
 
-async_prefix_search(_Ref, _Prefix, _CallerRef, _Pid) ->
+async_prefix_search(_Ref, _Prefix) ->
   ?nif_stub.
 
 -spec prefix_search(Ref :: term(), Prefix :: binary()) ->
@@ -66,9 +66,7 @@ async_prefix_search(_Ref, _Prefix, _CallerRef, _Pid) ->
   {error, Reason :: term()}.
 
 prefix_search(Ref, Prefix) ->
-  CallerRef = make_ref(),
-  ok = async_prefix_search(Ref, Prefix, CallerRef, self()),
-  Reply = ?WAIT_FOR_REPLY(CallerRef, 1000),
+  Reply = async_prefix_search(Ref, Prefix),
   case Reply of
     {ok, Res} ->
       Res;

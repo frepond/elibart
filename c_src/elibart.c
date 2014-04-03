@@ -42,8 +42,6 @@ typedef struct
 typedef struct
 {
     ErlNifEnv *env;
-    ErlNifPid pid;
-    ERL_NIF_TERM caller_ref;
     ERL_NIF_TERM t;
     ERL_NIF_TERM key; 
     ERL_NIF_TERM result_acc;  
@@ -99,7 +97,7 @@ static ErlNifFunc nif_funcs[] =
     {"destroy", 1, elibart_destroy},
     {"insert", 3, elibart_insert},
     {"search", 2, elibart_search},
-    {"async_prefix_search", 4, elibart_prefix_search},
+    {"async_prefix_search", 2, elibart_prefix_search},
     {"art_size", 1, elibart_size}
 };
 
@@ -252,21 +250,15 @@ static void* async_prefix_search(void* data)
     ErlNifBinary key;
     callback_data *cb_data = (callback_data*) data;
     
+    // TODO move to elibart_prefix_search
     // extract arguments atr_tree, key
     if(!enif_get_resource(cb_data->env, cb_data->t, elibart_RESOURCE, (void**) &t))
-        enif_send(NULL, &cb_data->pid, cb_data->env, mk_error(cb_data->env, "art_prefix_search"));
+        return NULL; // TODO return error
     if (!enif_inspect_binary(cb_data->env, cb_data->key, &key))
-        enif_send(NULL, &cb_data->pid, cb_data->env, mk_error(cb_data->env, "art_prefix_search"));
+        return NULL; // TODO return error
 
     if (art_iter_prefix(t, key.data, key.size, prefix_cb, cb_data))
-        enif_send(NULL, &cb_data->pid, cb_data->env, mk_error(cb_data->env, "art_prefix_search"));
-
-    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env, cb_data->caller_ref, 
-                        enif_make_tuple2(cb_data->env, mk_atom(cb_data->env, "ok"), cb_data->result_acc));
-
-    enif_send(NULL, &cb_data->pid, cb_data->env, res);
-    enif_free_env(cb_data->env);
-    free(cb_data);
+        return NULL; // TODO return error
 
     return NULL;
 }
@@ -275,24 +267,14 @@ static void* async_prefix_search(void* data)
 static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
                                           const ERL_NIF_TERM argv[])
 {
-    callback_data *cb_data = malloc(sizeof(callback_data));
-
-    if (argc != 4)
+    if (argc != 2)
         return enif_make_badarg(env);
 
-    cb_data->env = enif_alloc_env();
-    if(cb_data->env == NULL)
-        return mk_error(env, "env_alloc_error");
-
-    if(!enif_is_pid(env, argv[3]))
-        return mk_error(env, "not_a_pid");
-
-    if(!enif_get_local_pid(cb_data->env, argv[3], &cb_data->pid))
-        return mk_error(env, "not_a_local_pid");
+    callback_data *cb_data = malloc(sizeof(callback_data));
+    cb_data->env = env;
 
     cb_data->t = enif_make_copy(cb_data->env, argv[0]);
     cb_data->key = enif_make_copy(cb_data->env, argv[1]);
-    cb_data->caller_ref = enif_make_copy(cb_data->env, argv[2]);
 
     ErlNifTid tid;
     ErlNifThreadOpts *opts;
@@ -303,7 +285,7 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
     enif_thread_join(tid, NULL);
 
-    return mk_atom(env, "ok");
+    return enif_make_tuple2(cb_data->env, mk_atom(cb_data->env, "ok"), cb_data->result_acc);
 }
 
 static ERL_NIF_TERM elibart_size(ErlNifEnv* env, int argc,
