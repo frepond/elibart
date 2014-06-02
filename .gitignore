@@ -18,3 +18,5 @@ elibart.sublime-project
 *.iml
 
 .idea/*
+
+.rebar/erlcinfo
