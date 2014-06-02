@@ -66,8 +66,8 @@ async_prefix_search(_Ref, _Prefix) ->
   {error, Reason :: term()}.
 
 prefix_search(Ref, Prefix) ->
-  Reply = async_prefix_search(Ref, Prefix),
-  case Reply of
+  Result = async_prefix_search(Ref, Prefix),
+  case Result of
     {ok, Res} ->
       Res;
     {error, _} = Error ->
@@ -91,7 +91,8 @@ fold(Ref, Prefix, Fun, Acc) ->
 %% ===================================================================
 -ifdef(TEST).
 
--define(MAX, 5000000).
+-define(MAX, 2000000).
+-define(LONG_PREFIX, <<"qwertyuiopasdfghjklzxcvbnmqwertyuiopasdfghjklzxcvbnmqwertyui">>).
 
 basic_test() ->
   {ok, Ref} = new(),
@@ -113,7 +114,7 @@ prefix_test() ->
   ?assert(lists:all(fun({K, _V}) -> lists:keymember(K, 1, List) end, Res)),
   ?assertEqual(3, length(Res)).
 
-volume_insert_5M_test() ->
+volume_insert_2M_test() ->
   Ref = get("art"),
   put("art", Ref),
   insert_n(Ref, 0, ?MAX),
@@ -123,28 +124,22 @@ insert_n(Ref, N, M) ->
   if 
     N =:= M -> ok;
     true -> 
-      Key = list_to_binary(integer_to_list(M)),
-      {ok, _} = insert(Ref, Key, Key),
+      Random = term_to_binary(random:seed(now())),
+      Prefix = list_to_binary(integer_to_list(M)),
+      Key = <<Prefix/binary,Random/binary,?LONG_PREFIX/binary,Random/binary,?LONG_PREFIX/binary>>,
+      {ok, _} = insert(Ref, Key, <<"1.0">>),
       insert_n(Ref, N, M - 1)
   end.
 
-volume_search_5M_test() ->
+volume_prefix_11K_test() ->
   Ref = get("art"),
-  Key = list_to_binary(integer_to_list(1)),
-  ?assertEqual({ok, Key}, search(Ref, Key)),
-  Key1 = list_to_binary(integer_to_list(?MAX)),
-  ?assertEqual({ok, Key1}, search(Ref, Key1)),
-  Key2 = list_to_binary(integer_to_list(?MAX div 2)),
-  ?assertEqual({ok, Key2}, search(Ref, Key2)).
-
-volume_prefix_1K_test() ->
-  Ref = get("art"),
-  L = prefix_search(Ref, <<"4000">>),
-  ?assertEqual(1111, length(L)).
+  % L = fold(Ref, <<"40">>, fun({K, _V}, Acc) -> [binary_to_list(K) | Acc] end, []),
+  L = prefix_search(Ref, <<"40">>),
+  ?assertEqual(11111, length(L)).
 
 multithread_search_test() ->
   Ref = get("art"),
-  {spawn, [ insert_worker(Ref),
+  {spawn, [ %insert_worker(Ref),
             search_worker(Ref),
             search_worker(Ref),
             search_worker(Ref),
@@ -161,9 +156,9 @@ insert_worker(Ref) ->
 
 search_worker(Ref) ->
   Key = <<"100">>,
-  L = prefix_search(Ref, <<"45000">>),
-  ?assertEqual(111, length(L)),
-  ?assertEqual(empty, search(Ref, <<"trash">>)),
-  ?assertEqual({ok, Key}, search(Ref, Key)).
+  % L = fold(Ref, <<"40">>, fun({K, _V}, Acc) -> [binary_to_list(K) | Acc] end, []),
+  L = prefix_search(Ref, <<"40">>),
+  ?assertEqual(11111, length(L)),
+  ?assertEqual(empty, search(Ref, <<"trash">>)).
 
 -endif.

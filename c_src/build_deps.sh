@@ -36,7 +36,7 @@ fi
 
 case "$1" in
     clean)
-        rm -rf libart
+        rm -rf elibart.o
         ;;
 
     compile)
@@ -54,6 +54,14 @@ case "$1" in
         ;;
 
     get-deps)
+        if [ ! -d libart ]; then
+            git clone $LIBART_REPO
+            (cd libart && git checkout $LIBART_VSN)
+        fi
+        ;;
+
+    update-deps)
+        rm -rf libart
         if [ ! -d libart ]; then
             git clone $LIBART_REPO
             (cd libart && git checkout $LIBART_VSN)
