@@ -1,0 +1,114 @@
+{
+	// See http://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "0.1.0",
+    "linux": { "command": "sh", "args": ["-c"] },
+    "osx": { "command": "sh", "args": ["-c"] },
+    "windows": { "command": "powershell", "args": ["-Command"] },
+    "isShellCommand": true,
+    "tasks": [
+        {
+            "taskName": "lint",
+            "suppressTaskName": true,
+            "args": [
+                "erlc -I apps/lsd/include -I deps -o /tmp ${file}"
+            ],
+	        "showOutput": "silent",
+            "isBuildCommand": true,
+	        "problemMatcher": {
+                "owner": "erl",
+                "fileLocation": ["relative", "${workspaceRoot}"],
+                "pattern": {
+                    "regexp": "^(.+):(\\d+):\\s+(Warning)?:?\\s*(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4
+                }
+	        }
+        },
+        {
+            "taskName": "rebar3 compile",
+            "suppressTaskName": true,
+            "args": [
+                "rebar3 compile"
+            ],
+	        "showOutput": "silent",
+	        "problemMatcher": {
+                "owner": "erl",
+                "fileLocation": ["relative", "${workspaceRoot}"],
+                "pattern": {
+                    "regexp": "^.*\/(\\w+\/\\w+.\\w+):(\\d+):\\s+(Warning)?:?\\s*(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4
+                }
+	        }
+        },
+        {
+            "taskName": "rebar3 release",
+            "suppressTaskName": true,
+            "args": [
+                "rebar3 release"
+            ],
+	        "showOutput": "silent",
+            "isBuildCommand": false
+        },
+        {
+            "taskName": "rebar3 clean",
+            "suppressTaskName": true,
+            "args": [
+                "rebar3 clean"
+            ],
+	        "showOutput": "silent",
+            "isBuildCommand": false
+        },
+        {
+            "taskName": "rebar3 dialyzer",
+            "suppressTaskName": true,
+            "args": [
+                "rebar3 dialyzer"
+            ],
+	        "showOutput": "silent",
+            "isBuildCommand": false
+        },
+        {
+        "taskName": "rebar3 ct",
+            "suppressTaskName": true,
+            "args": [
+                "rebar3 ct"
+            ],
+	        "showOutput": "silent",
+            "isBuildCommand": false,
+            "isTestCommand": true
+        },
+        {
+            "taskName": "rebar3 eunit",
+            "suppressTaskName": true,
+            "args": [
+                "rebar3 eunit"
+            ],
+	        "showOutput": "silent",
+            "isBuildCommand": false
+        },
+        {
+            "taskName": "rebar3 upgrade",
+            "suppressTaskName": true,
+            "args": [
+                "rebar3 upgrade"
+            ],
+	        "showOutput": "silent",
+            "isBuildCommand": false
+        },
+        {
+            "taskName": "erlang indent",
+            "suppressTaskName": true,
+            "args": [
+                "erl-indent ${file}"
+            ],
+	        "showOutput": "never",
+            "isBuildCommand": false
+        }
+    ]
+}
