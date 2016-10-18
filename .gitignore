@@ -20,3 +20,5 @@ elibart.sublime-project
 .idea/*
 
 .rebar/erlcinfo
+
+compile_commands.json
