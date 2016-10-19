@@ -129,9 +129,9 @@ volume_prefix_111K_test() ->
     L = prefix_search(Ref, <<?LONG_PREFIX/binary, "40">>),
     ?assertEqual(111111, length(L)).
 
-%%multithread_search_10x1K_test_() ->
-%%    Ref = get("art"),
-%%    {spawn, lists:duplicate(1000, search_worker(Ref))}.
+multithread_search_10x1K_test_() ->
+    Ref = get("art"),
+    {spawn, lists:duplicate(1000, search_worker(Ref))}.
 
 insert_worker(Ref) ->
     insert_n(Ref, 4500000, 5500000).
