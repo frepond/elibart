@@ -59,7 +59,7 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
 static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
                                           const ERL_NIF_TERM argv[]);
 static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
-                                          const ERL_NIF_TERM argv[]);
+                                          const ERL_NIF_TERM argv[], ERL_NIF_DIRTY_JOB_CPU_BOUND);
 static ERL_NIF_TERM elibart_size(ErlNifEnv* env, int argc,
                                           const ERL_NIF_TERM argv[]);
 
