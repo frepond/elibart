@@ -59,7 +59,7 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
 static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
                                           const ERL_NIF_TERM argv[]);
 static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
-                                          const ERL_NIF_TERM argv[], ERL_NIF_DIRTY_JOB_CPU_BOUND);
+                                          const ERL_NIF_TERM argv[]);
 static ERL_NIF_TERM elibart_size(ErlNifEnv* env, int argc,
                                           const ERL_NIF_TERM argv[]);
 
@@ -276,14 +276,9 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     cb_data->t = enif_make_copy(cb_data->env, argv[0]);
     cb_data->key = enif_make_copy(cb_data->env, argv[1]);
 
-    ErlNifTid tid;
-    ErlNifThreadOpts *opts;
-
-    opts = enif_thread_opts_create("elibart_prefix_search");
     // We initialise the results accumulator list
     cb_data->result_acc = enif_make_list(cb_data->env, 0),
-    enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
-    enif_thread_join(tid, NULL);
+    async_prefix_search(cb_data);
 
     return enif_make_tuple2(cb_data->env, mk_atom(cb_data->env, "ok"), cb_data->result_acc);
 }
