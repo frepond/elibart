@@ -108,36 +108,36 @@ insert_n(Ref, N, M) ->
         true ->
             Random = term_to_binary(random:seed(now())),
             Prefix = list_to_binary(integer_to_list(M)),
-            Key = <<Prefix/binary,Random/binary,?LONG_PREFIX/binary,Random/binary,?LONG_PREFIX/binary>>,
+            Key = <<?LONG_PREFIX/binary, Prefix/binary, Random/binary, ?LONG_PREFIX/binary, Random/binary, ?LONG_PREFIX/binary>>,
             {ok, _} = insert(Ref, Key, <<"">>),
             insert_n(Ref, N, M - 1)
     end.
 
 volume_prefix_1K_test() ->
     Ref = get("art"),
-    L = prefix_search(Ref, <<"4000">>),
+    L = prefix_search(Ref, <<?LONG_PREFIX/binary, "4000">>),
     ?assertEqual(1111, length(L)).
 
 volume_prefix_11K_test() ->
     Ref = get("art"),
     %% L = fold(Ref, <<"40">>, fun({K, _V}, Acc) -> [binary_to_list(K) | Acc] end, []),
-    L = prefix_search(Ref, <<"400">>),
+    L = prefix_search(Ref, <<?LONG_PREFIX/binary, "400">>),
     ?assertEqual(11111, length(L)).
 
 volume_prefix_111K_test() ->
     Ref = get("art"),
-    L = prefix_search(Ref, <<"40">>),
+    L = prefix_search(Ref, <<?LONG_PREFIX/binary, "40">>),
     ?assertEqual(111111, length(L)).
 
-multithread_search_10x1K_test_() ->
-    Ref = get("art"),
-    {spawn, lists:duplicate(1000, search_worker(Ref))}.
+%%multithread_search_10x1K_test_() ->
+%%    Ref = get("art"),
+%%    {spawn, lists:duplicate(1000, search_worker(Ref))}.
 
 insert_worker(Ref) ->
     insert_n(Ref, 4500000, 5500000).
 
 search_worker(Ref) ->
-    L = prefix_search(Ref, <<"4000">>),
+    L = prefix_search(Ref, <<?LONG_PREFIX/binary, "4000">>),
     ?assertEqual(1111, length(L)),
     ?_assertEqual(empty, search(Ref, <<"trash">>)).
 
