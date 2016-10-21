@@ -94,7 +94,7 @@ mk_error(ErlNifEnv* env, const char* mesg)
 static ErlNifFunc nif_funcs[] =
 {
     {"new", 0, elibart_new},
-    {"destroy", 1, elibart_destroy},
+    {"destroy", 1, elibart_destroy, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"insert", 3, elibart_insert},
     {"search", 2, elibart_search},
     {"async_prefix_search", 2, elibart_prefix_search, ERL_NIF_DIRTY_JOB_CPU_BOUND},
@@ -278,7 +278,11 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
 
     // We initialise the results accumulator list
     cb_data->result_acc = enif_make_list(cb_data->env, 0),
-    async_prefix_search(cb_data);
+
+    // TODO it's not clear if this is needed it could hurt performance if many too threads are spawned.
+    enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
+    enif_thread_join(tid, NULL);
+    // async_prefix_search(cb_data);
 
     return enif_make_tuple2(cb_data->env, mk_atom(cb_data->env, "ok"), cb_data->result_acc);
 }
