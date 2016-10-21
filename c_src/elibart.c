@@ -45,8 +45,8 @@ typedef struct
     ErlNifPid pid;
     ERL_NIF_TERM caller_ref;
     ERL_NIF_TERM t;
-    ERL_NIF_TERM key; 
-    ERL_NIF_TERM result_acc;  
+    ERL_NIF_TERM key;
+    ERL_NIF_TERM result_acc;
 } callback_data;
 
 
@@ -74,7 +74,7 @@ void printBinary(ErlNifBinary* bin)
     fputs("|\n", stderr);
 }
 
-ERL_NIF_TERM    
+ERL_NIF_TERM
 mk_atom(ErlNifEnv* env, const char* atom)
 {
     ERL_NIF_TERM ret;
@@ -108,19 +108,19 @@ static ERL_NIF_TERM elibart_new(ErlNifEnv* env, int argc,
 {
     art_tree* t = enif_alloc_resource(elibart_RESOURCE,
                                                     sizeof(art_tree));
-    
+
     if (init_art_tree(t) != 0)
         return mk_error(env, "init_art_tree");
-    else 
+    else
     {
         ERL_NIF_TERM res = enif_make_resource(env, t);
         enif_release_resource(t);
-    
+
         return enif_make_tuple2(env, mk_atom(env, "ok"), res);
     }
 }
 
-static int delete_cb(void *data, const unsigned char *k, uint32_t k_len, void *val) 
+static int delete_cb(void *data, const unsigned char *k, uint32_t k_len, void *val)
 {
     art_elem_struct *elem = val;
 
@@ -183,7 +183,7 @@ static ERL_NIF_TERM elibart_insert(ErlNifEnv* env, int argc,
     art_elem_struct *old_elem = art_insert(t, key.data, key.size, elem);
 
     // the inserted key is new
-    if (!old_elem) 
+    if (!old_elem)
         return enif_make_tuple2(env, mk_atom(env, "ok"), mk_atom(env, "empty"));
 
     // the inserted key already existed, return previous value
@@ -202,7 +202,7 @@ static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
 {
     art_tree* t;
     ErlNifBinary key;
-    
+
     // extract arguments atr_tree, key
     if(argc != 2)
       return enif_make_badarg(env);
@@ -227,7 +227,7 @@ static ERL_NIF_TERM elibart_search(ErlNifEnv* env, int argc,
     return enif_make_tuple2(env, mk_atom(env, "ok"), enif_make_binary(env, &res));
 }
 
-static int prefix_cb(void *data, const unsigned char *k, uint32_t k_len, void *val) 
+static int prefix_cb(void *data, const unsigned char *k, uint32_t k_len, void *val)
 {
     callback_data *cb_data = data;
     art_elem_struct *elem = val;
@@ -239,7 +239,7 @@ static int prefix_cb(void *data, const unsigned char *k, uint32_t k_len, void *v
     enif_alloc_binary(elem->size, &value);
     memcpy(value.data, elem->data, elem->size);
 
-    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env, 
+    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env,
             enif_make_binary(cb_data->env, &key), enif_make_binary(cb_data->env, &value));
     cb_data->result_acc = enif_make_list_cell(cb_data->env, res, cb_data->result_acc);
 
@@ -251,7 +251,7 @@ static void* async_prefix_search(void* data)
     art_tree* t;
     ErlNifBinary key;
     callback_data *cb_data = (callback_data*) data;
-    
+
     // extract arguments atr_tree, key
     if(!enif_get_resource(cb_data->env, cb_data->t, elibart_RESOURCE, (void**) &t))
         enif_send(NULL, &cb_data->pid, cb_data->env, mk_error(cb_data->env, "art_prefix_search"));
@@ -261,7 +261,7 @@ static void* async_prefix_search(void* data)
     if (art_iter_prefix(t, key.data, key.size, prefix_cb, cb_data))
         enif_send(NULL, &cb_data->pid, cb_data->env, mk_error(cb_data->env, "art_prefix_search"));
 
-    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env, cb_data->caller_ref, 
+    ERL_NIF_TERM res = enif_make_tuple2(cb_data->env, cb_data->caller_ref,
                         enif_make_tuple2(cb_data->env, mk_atom(cb_data->env, "ok"), cb_data->result_acc));
 
     enif_send(NULL, &cb_data->pid, cb_data->env, res);
@@ -301,7 +301,6 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     // We initialise the results accumulator list
     cb_data->result_acc = enif_make_list(cb_data->env, 0),
     enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
-    enif_thread_join(tid, NULL);
 
     return mk_atom(env, "ok");
 }

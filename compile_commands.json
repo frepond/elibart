@@ -1,0 +1,6 @@
+[
+{ "file"      : "c_src/elibart.c"
+, "directory" : "/Users/frepond/Documents/leapsight/code/elibart"
+, "command"   : "cc -c -Wall -O3 -fPIC -g -Wall -fPIC -MMD -I\"/usr/local/Cellar/erlang/19.1/lib/erlang/lib/erl_interface-3.9.1/include\" -I\"/usr/local/Cellar/erlang/19.1/lib/erlang/erts-8.1/include\" -O3 -Wall -I c_src/libart/src c_src/elibart.c -o c_src/elibart.o"
+}
+]
