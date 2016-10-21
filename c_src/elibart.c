@@ -276,18 +276,18 @@ static ERL_NIF_TERM elibart_prefix_search(ErlNifEnv* env, int argc,
     cb_data->t = enif_make_copy(cb_data->env, argv[0]);
     cb_data->key = enif_make_copy(cb_data->env, argv[1]);
 
-    ErlNifTid tid;
-    ErlNifThreadOpts *opts;
+    //ErlNifTid tid;
+    //ErlNifThreadOpts *opts;
 
-    opts = enif_thread_opts_create("elibart_prefix_search");
+    //opts = enif_thread_opts_create("elibart_prefix_search");
 
     // We initialise the results accumulator list
     cb_data->result_acc = enif_make_list(cb_data->env, 0),
 
     // TODO it's not clear if this is needed it could hurt performance if many too threads are spawned.
-    enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
-    enif_thread_join(tid, NULL);
-    // async_prefix_search(cb_data);
+    //enif_thread_create("elibart_prefix_search", &tid, &async_prefix_search, cb_data, opts);
+    //enif_thread_join(tid, NULL);
+    async_prefix_search(cb_data);
 
     return enif_make_tuple2(cb_data->env, mk_atom(cb_data->env, "ok"), cb_data->result_acc);
 }
